@@ -1,5 +1,9 @@
 package life
 
+import java.util.concurrent.ThreadLocalRandom
+
+data class CellCoordinates(val x: Int, val y: Int)
+
 class GameState(private val activeCells: Set<CellCoordinates> = setOf()) {
     fun getActiveCells(): Set<CellCoordinates> = activeCells
 
@@ -42,8 +46,32 @@ class GameState(private val activeCells: Set<CellCoordinates> = setOf()) {
         return GameState(newActiveCells)
     }
 
-    fun activateCell(newActiveCell: CellCoordinates) = GameState(
-        this.getActiveCells() + newActiveCell
+    fun activateCells(newActiveCells: Collection<CellCoordinates>) = GameState(
+        this.activeCells + newActiveCells
     )
 
+    fun activateRandomCellsAround(clickedCell: CellCoordinates): GameState {
+        val random = ThreadLocalRandom.current()
+        val ns = this.activateCells((1..1 + random.nextInt(10)).map {
+            CellCoordinates(
+                clickedCell.x + random.nextInt(5) - 2,
+                clickedCell.y + random.nextInt(5) - 2
+            )
+        }.toSet())
+        return ns
+    }
+
+    companion object {
+        fun random(size: Int, frequency: Double): GameState = GameState(
+            (-size..size).flatMap { x ->
+                (-size..size).flatMap { y ->
+                    if (ThreadLocalRandom.current().nextDouble() < frequency) {
+                        listOf(CellCoordinates(x, y))
+                    } else {
+                        listOf()
+                    }
+                }
+            }.toSet()
+        )
+    }
 }

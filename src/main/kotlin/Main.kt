@@ -27,7 +27,7 @@ fun App() {
     val cellSizePixels = 40
     val gridColor = Color.Blue
     val cellColor = Color.Blue
-    val gameState: MutableState<GameState> = remember { mutableStateOf(GameState()) }
+    val gameState: MutableState<GameState> = remember { mutableStateOf(GameState.random(20, 0.1)) }
     val pausedState: MutableState<Boolean> = remember { mutableStateOf(false) }
 
     Executors.newSingleThreadScheduledExecutor {
@@ -51,12 +51,14 @@ fun App() {
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { tapOffset: Offset ->
-                        val newActiveCell = tapOffset.toCellCoordinates(
+                        val clickedCell = tapOffset.toCellCoordinates(
                             size.width,
                             size.height,
                             cellSizePixels
                         )
-                        gameState.value = gameState.value.activateCell(newActiveCell)
+                        val oldState = gameState.value
+                        val ns = oldState.activateRandomCellsAround(clickedCell)
+                        gameState.value = ns
                     },
                     onDoubleTap = { pausedState.value = !pausedState.value }
                 )
