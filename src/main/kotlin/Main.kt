@@ -15,8 +15,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import life.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -25,13 +27,17 @@ fun App() {
     val cellSizePixels = 40
     val gridColor = Color.Blue
     val cellColor = Color.Blue
-    val gameState: MutableState<Set<CellCoords>> = remember { mutableStateOf(setOf()) }
+    val gameState: MutableState<GameState> = remember { mutableStateOf(GameState()) }
     val pausedState: MutableState<Boolean> = remember { mutableStateOf(false) }
 
-    Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+    Executors.newSingleThreadScheduledExecutor {
+        val t = Thread(it)
+        t.isDaemon = true
+        t
+    }.scheduleAtFixedRate(
         {
             if (!pausedState.value) {
-                updateState(gameState)
+                gameState.value = gameState.value.calculateNewState()
             }
         },
         1000,
@@ -45,82 +51,28 @@ fun App() {
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { tapOffset: Offset ->
-                        gameState.value = gameState.value + CellCoords.fromOffset(
-                            tapOffset,
+                        val newActiveCell = tapOffset.toCellCoordinates(
                             size.width,
                             size.height,
                             cellSizePixels
                         )
+                        gameState.value = gameState.value.activateCell(newActiveCell)
                     },
-                    onDoubleTap = {pausedState.value = !pausedState.value}
+                    onDoubleTap = { pausedState.value = !pausedState.value }
                 )
             }) {
             val canvasWidth = size.width
             val canvasHeight = size.height
 
             drawGrid(canvasWidth, canvasHeight, cellSizePixels, gridColor)
-            drawState(gameState.value, canvasWidth, canvasHeight, cellSizePixels, cellColor)
+            drawState(gameState.value.getActiveCells(), canvasWidth, canvasHeight, cellSizePixels, cellColor)
         }
     }
 }
 
-private fun updateState(gameState: MutableState<Set<CellCoords>>) {
-    gameState.value = calculateNewState(gameState.value)
-}
-
-fun calculateNewState(state: Set<CellCoords>): Set<CellCoords> {
-    val relevantCells = state.flatMap {
-        listOf(
-            CellCoords(it.x - 1, it.y - 1),
-            CellCoords(it.x - 1, it.y),
-            CellCoords(it.x - 1, it.y + 1),
-            CellCoords(it.x, it.y - 1),
-            CellCoords(it.x, it.y),
-            CellCoords(it.x, it.y + 1),
-            CellCoords(it.x + 1, it.y - 1),
-            CellCoords(it.x + 1, it.y),
-            CellCoords(it.x + 1, it.y + 1),
-        )
-    }.toSet()
-
-    return relevantCells.flatMap { cell ->
-        val allNeighbours = listOf(
-            CellCoords(cell.x - 1, cell.y - 1),
-            CellCoords(cell.x - 1, cell.y),
-            CellCoords(cell.x - 1, cell.y + 1),
-            CellCoords(cell.x, cell.y - 1),
-            CellCoords(cell.x, cell.y + 1),
-            CellCoords(cell.x + 1, cell.y - 1),
-            CellCoords(cell.x + 1, cell.y),
-            CellCoords(cell.x + 1, cell.y + 1),
-        )
-        val activeNeighbours = allNeighbours.intersect(state)
-        if (
-            state.contains(cell) && (activeNeighbours.size == 2 || activeNeighbours.size == 3)
-            || !state.contains(cell) && activeNeighbours.size == 3
-        ) {
-            listOf(cell)
-        } else {
-            listOf()
-        }
-    }.toSet()
-}
-
-data class CellCoords(val x: Int, val y: Int) {
-    fun toOffset(canvasWidth: Float, canvasHeight: Float, cellSizePixels: Int): Offset {
-        return Offset((canvasWidth / 2 + x * cellSizePixels), (canvasHeight / 2 - y * cellSizePixels))
-    }
-
-    companion object {
-        fun fromOffset(o: Offset, canvasWidth: Int, canvasHeight: Int, cellSizePixels: Int): CellCoords = CellCoords(
-            Math.round((o.x - canvasWidth / 2) / cellSizePixels),
-            Math.round((canvasHeight / 2 - o.y) / cellSizePixels)
-        )
-    }
-}
 
 fun DrawScope.drawState(
-    gameState: Set<CellCoords>,
+    gameState: Set<CellCoordinates>,
     canvasWidth: Float,
     canvasHeight: Float,
     cellSizePixels: Int,
@@ -172,3 +124,12 @@ fun main() = application {
         App()
     }
 }
+
+fun CellCoordinates.toOffset(canvasWidth: Float, canvasHeight: Float, cellSizePixels: Int): Offset {
+    return Offset((canvasWidth / 2 + x * cellSizePixels), (canvasHeight / 2 - y * cellSizePixels))
+}
+
+fun Offset.toCellCoordinates(canvasWidth: Int, canvasHeight: Int, cellSizePixels: Int) = CellCoordinates(
+    ((this.x - canvasWidth / 2) / cellSizePixels).roundToInt(),
+    ((canvasHeight / 2 - this.y) / cellSizePixels).roundToInt()
+)
