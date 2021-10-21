@@ -15,9 +15,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import life.*
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import life.CellCoordinates
+import life.GameState
 import kotlin.math.roundToInt
 
 
@@ -30,20 +34,14 @@ fun App() {
     val gameState: MutableState<GameState> = remember { mutableStateOf(GameState.random(20, 0.1)) }
     val pausedState: MutableState<Boolean> = remember { mutableStateOf(false) }
 
-    Executors.newSingleThreadScheduledExecutor {
-        val t = Thread(it)
-        t.isDaemon = true
-        t
-    }.scheduleAtFixedRate(
-        {
+    GlobalScope.launch {
+        while (currentCoroutineContext().isActive) {
+            delay(500)
             if (!pausedState.value) {
                 gameState.value = gameState.value.calculateNewState()
             }
-        },
-        1000,
-        500,
-        TimeUnit.MILLISECONDS
-    )
+        }
+    }
 
     DesktopMaterialTheme {
         Canvas(modifier = Modifier
