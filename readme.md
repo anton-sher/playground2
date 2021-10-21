@@ -3,4 +3,4 @@
 - buttons for controlling speed/pausing
 - save/load state
 - zoom in/out
-- visualize age of cell (color?)
+- fix not exiting app after closing window

@@ -22,6 +22,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import life.CellCoordinates
 import life.GameState
+import kotlin.math.atan
 import kotlin.math.roundToInt
 
 
@@ -29,11 +30,12 @@ import kotlin.math.roundToInt
 @Preview
 fun App() {
     val cellSizePixels = 40
-    val gridColor = Color.Blue
-    val cellColor = Color.Blue
+    val gridColor = Color.LightGray
+    val cellColor = Color(54, 120, 25)
     val gameState: MutableState<GameState> = remember { mutableStateOf(GameState.random(20, 0.1)) }
     val pausedState: MutableState<Boolean> = remember { mutableStateOf(false) }
 
+    @Suppress("EXPERIMENTAL_API_USAGE")
     GlobalScope.launch {
         while (currentCoroutineContext().isActive) {
             delay(500)
@@ -65,27 +67,28 @@ fun App() {
             val canvasHeight = size.height
 
             drawGrid(canvasWidth, canvasHeight, cellSizePixels, gridColor)
-            drawState(gameState.value.getActiveCells(), canvasWidth, canvasHeight, cellSizePixels, cellColor)
+            drawState(gameState.value, canvasWidth, canvasHeight, cellSizePixels, cellColor)
         }
     }
 }
 
 
 fun DrawScope.drawState(
-    gameState: Set<CellCoordinates>,
+    gameState: GameState,
     canvasWidth: Float,
     canvasHeight: Float,
     cellSizePixels: Int,
     cellColor: Color
 ) {
-    gameState.forEach {
+    gameState.getActiveCells().forEach {
         val ofs = it.toOffset(canvasWidth, canvasHeight, cellSizePixels)
         val rectOffset = Offset(ofs.x - cellSizePixels / 2, ofs.y - cellSizePixels / 2)
         val rectSize = Size(cellSizePixels.toFloat(), cellSizePixels.toFloat())
         drawRect(
             cellColor,
             rectOffset,
-            rectSize
+            rectSize,
+            alpha = (atan(gameState.getCellAge(it).toDouble() / 10 + 0.5) / Math.PI * 2).toFloat(),
         )
     }
 }

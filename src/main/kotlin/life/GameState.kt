@@ -4,8 +4,15 @@ import java.util.concurrent.ThreadLocalRandom
 
 data class CellCoordinates(val x: Int, val y: Int)
 
-class GameState(private val activeCells: Set<CellCoordinates> = setOf()) {
+class GameState(
+    private val activeCells: Set<CellCoordinates> = setOf(),
+    private val cellAges: Map<CellCoordinates, Int> = activeCells.associateWith { 0 }
+) {
     fun getActiveCells(): Set<CellCoordinates> = activeCells
+
+    fun getCellAge(cellCoordinates: CellCoordinates): Int {
+        return cellAges[cellCoordinates]!!
+    }
 
     fun calculateNewState(): GameState {
         val relevantCells = activeCells.flatMap {
@@ -43,16 +50,20 @@ class GameState(private val activeCells: Set<CellCoordinates> = setOf()) {
                 listOf()
             }
         }.toSet()
-        return GameState(newActiveCells)
+        return GameState(
+            newActiveCells,
+            newActiveCells.associateWith { (cellAges[it]?:-1) + 1 }
+        )
     }
 
     fun activateCells(newActiveCells: Collection<CellCoordinates>) = GameState(
-        this.activeCells + newActiveCells
+        this.activeCells + newActiveCells,
+        this.cellAges + (newActiveCells - activeCells).associateWith { 0 }
     )
 
     fun activateRandomCellsAround(clickedCell: CellCoordinates): GameState {
         val random = ThreadLocalRandom.current()
-        val ns = this.activateCells((1..1 + random.nextInt(10)).map {
+        val ns = this.activateCells((1..(4 + random.nextInt(8))).map {
             CellCoordinates(
                 clickedCell.x + random.nextInt(5) - 2,
                 clickedCell.y + random.nextInt(5) - 2
